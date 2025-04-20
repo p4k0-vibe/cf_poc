@@ -1,57 +1,73 @@
-# Cloudflare Workers y Pages POC
+# Gestión de Gastos Familiares
 
-Esta prueba de concepto (POC) demuestra la integración de un backend construido con Cloudflare Workers y un frontend desplegado en Cloudflare Pages.
+Aplicación para administrar gastos mensuales familiares con múltiples usuarios, formas de pago y categorización de gastos.
 
-## Estructura del Proyecto
+## Características Principales
+
+- **Múltiples usuarios** para gestión familiar colaborativa
+- **Diferentes métodos de pago** (efectivo, tarjetas, transferencias, etc.)
+- **Categorización de gastos** (alimentos, servicios, transporte, etc.)
+- **Reportes y análisis** de gastos mensuales
+- **Almacenamiento de comprobantes** de pagos
+- **Autenticación segura** con Firebase Auth
+
+## Arquitectura Técnica
 
 ```
 cf_poc/
-├── backend/           # API con Cloudflare Workers
-│   ├── src/
-│   ├── wrangler.toml
-│   └── package.json
-├── frontend/          # Aplicación web con Cloudflare Pages
+├── frontend/          # Aplicación React con TypeScript y Tailwind CSS
 │   ├── public/
 │   ├── src/
 │   └── package.json
+├── backend/           # API Python con Cloudflare Workers
+│   ├── src/
+│   ├── wrangler.toml
+│   └── requirements.txt
+├── infrastructure/    # Configuración de Terraform para Cloudflare
+│   ├── main.tf
+│   ├── variables.tf
+│   └── outputs.tf
+├── .github/           # GitHub Actions para CI/CD
+│   └── workflows/
+│       ├── frontend.yml
+│       └── backend.yml
 └── README.md
 ```
 
-## Backend (Cloudflare Workers)
+## Stack Tecnológico
 
-El backend utiliza Cloudflare Workers para crear una API serverless con las siguientes características:
+### Frontend
+- React con TypeScript
+- Tailwind CSS para estilos
+- Firebase Auth para autenticación
+- CI/CD con GitHub Actions
 
-- Endpoints RESTful
-- Almacenamiento con Cloudflare KV o D1
-- Autenticación JWT
-- CORS configurado para el frontend
+### Backend
+- Python en Cloudflare Workers
+- Cloudflare D1 (base de datos SQL)
+- Cloudflare R2 para almacenamiento de archivos (comprobantes)
 
-## Frontend (Cloudflare Pages)
-
-El frontend es una aplicación web moderna desplegada en Cloudflare Pages:
-
-- Framework a elección (React, Vue, Svelte, etc.)
-- Comunicación con la API del backend
-- Diseño responsive
-- Experiencia de usuario optimizada
+### Infraestructura
+- Terraform para infraestructura como código
+- Cloudflare como proveedor cloud
 
 ## Configuración y Despliegue
 
 ### Requisitos previos
 - Cuenta en Cloudflare
-- Node.js
-- Wrangler CLI (`npm install -g wrangler`)
+- Cuenta en Firebase
+- Node.js y npm
+- Python 3.9+
+- Terraform CLI
+- Wrangler CLI
 
-### Pasos para el desarrollo
+### Desarrollo Local
 1. Clonar este repositorio
-2. Configurar el backend y frontend según las instrucciones en sus respectivos directorios
-3. Desarrollar y probar localmente
-4. Desplegar a Cloudflare
+2. Configurar las variables de entorno según `.env.example`
+3. Seguir las instrucciones en las carpetas `frontend` y `backend`
 
-## Ventajas de esta arquitectura
+## Flujo de Trabajo
 
-- Despliegue automatizado
-- Escalabilidad automática
-- Baja latencia global (red de Cloudflare)
-- Costo optimizado (modelo serverless)
-- Integración CI/CD con GitHub
+El sistema utiliza GitHub Actions para CI/CD:
+- Al hacer push a la rama `main` en la carpeta `frontend`, se despliega automáticamente a Cloudflare Pages
+- Al hacer push a la rama `main` en la carpeta `backend`, se despliega automáticamente a Cloudflare Workers

@@ -1,0 +1,26 @@
+name = "gastos-familiares-api"
+main = "src/main.py"
+compatibility_date = "2023-09-01"
+compatibility_flags = ["python_workers"]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "gastos_familiares_db"
+database_id = "your-database-id"
+
+[[r2_buckets]]
+binding = 'RECEIPTS_BUCKET'
+bucket_name = 'receipts-bucket'
+
+[vars]
+FIREBASE_PROJECT_ID = "your-firebase-project-id"
+ALLOWED_ORIGINS = "http://localhost:5173,https://your-app-domain.pages.dev"
+
+[env.production]
+workers_dev = false
+route = { pattern = "api.your-custom-domain.com/*", zone_id = "your-zone-id" }
+
+# KV Namespace for storing session or cache data if needed
+# [[kv_namespaces]]
+# binding = "KV"
+# id = "your-kv-namespace-id"

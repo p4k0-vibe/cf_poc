@@ -1,0 +1,59 @@
+name: Deploy Backend
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "backend/**"
+      - ".github/workflows/backend.yml"
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.9"
+          cache: "pip"
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Install dependencies
+        run: |
+          cd backend
+          pip install -r requirements.txt
+          npm install -g wrangler
+
+      - name: Update wrangler.toml
+        run: |
+          cd backend
+          cat > wrangler.toml << EOF
+          name = "gastos-familiares-api"
+          main = "src/main.py"
+          compatibility_date = "2023-09-01"
+          compatibility_flags = [ "python_workers" ]
+
+          [[d1_databases]]
+          binding = "DB"
+          database_name = "gastos_familiares_db"
+          database_id = "${{ secrets.CLOUDFLARE_D1_DATABASE_ID }}"
+
+          [[r2_buckets]]
+          binding = 'RECEIPTS_BUCKET'
+          bucket_name = 'receipts-bucket'
+
+          [vars]
+          FIREBASE_PROJECT_ID = "${{ secrets.FIREBASE_PROJECT_ID }}"
+          ALLOWED_ORIGINS = "${{ secrets.ALLOWED_ORIGINS }}"
+          EOF
+
+      - name: Deploy to Cloudflare Workers
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: deploy backend/src/main.py --config backend/wrangler.toml
