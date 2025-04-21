@@ -23,14 +23,22 @@ cf_poc/
 │   ├── src/
 │   ├── wrangler.toml
 │   └── requirements.txt
-├── infrastructure/    # Configuración de Terraform para Cloudflare
-│   ├── main.tf
+├── infrastructure/    # Configuración de Terraform para Cloudflare y GCP/Firebase
+│   ├── cloudflare/    # Módulo de Cloudflare
+│   ├── gcp/           # Módulo de GCP/Firebase
+│   ├── main.tf        # Configuración de módulos
+│   ├── providers.tf
 │   ├── variables.tf
 │   └── outputs.tf
+├── git-hooks/         # Hooks para control de calidad de código
+│   ├── pre-commit     # Verifica la configuración de Terraform
+│   └── install-hooks.sh
 ├── .github/           # GitHub Actions para CI/CD
 │   └── workflows/
 │       ├── frontend.yml
-│       └── backend.yml
+│       ├── backend.yml
+│       ├── terraform-cloudflare.yml
+│       └── terraform-gcp.yml
 └── README.md
 ```
 
@@ -49,25 +57,57 @@ cf_poc/
 
 ### Infraestructura
 - Terraform para infraestructura como código
-- Cloudflare como proveedor cloud
+- Cloudflare como proveedor cloud principal
+- GCP/Firebase para autenticación y almacenamiento de datos
 
 ## Configuración y Despliegue
 
 ### Requisitos previos
 - Cuenta en Cloudflare
-- Cuenta en Firebase
+- Cuenta en Firebase/GCP
 - Node.js y npm
 - Python 3.9+
 - Terraform CLI
 - Wrangler CLI
 
-### Desarrollo Local
-1. Clonar este repositorio
-2. Configurar las variables de entorno según `.env.example`
-3. Seguir las instrucciones en las carpetas `frontend` y `backend`
+### Configuración de la infraestructura
+1. Consulta las instrucciones detalladas en [infrastructure/README.md](infrastructure/README.md)
+2. Configura los secretos en GitHub según las instrucciones
+3. Ejecuta los workflows de Terraform para crear la infraestructura, o hazlo manualmente
 
-## Flujo de Trabajo
+### Desarrollo Local
+1. Clona este repositorio
+2. Configura las variables de entorno según `.env.example`
+3. Instala las dependencias del frontend: `cd frontend && npm install`
+4. Instala las dependencias del backend: `cd backend && pip install -r requirements.txt`
+5. Ejecuta el frontend: `cd frontend && npm run dev`
+6. Ejecuta el backend localmente con Wrangler: `cd backend && wrangler dev`
+
+### Git Hooks
+
+Este proyecto incluye git hooks para asegurar la calidad del código antes de cada commit:
+
+1. **Pre-commit**: Ejecuta `terraform validate` para verificar la configuración de Terraform
+
+Para instalar los git hooks, ejecuta:
+
+```bash
+./git-hooks/install-hooks.sh
+```
+
+Esto copiará los hooks al directorio `.git/hooks` y los hará ejecutables.
+
+## Flujo de Trabajo de CI/CD
 
 El sistema utiliza GitHub Actions para CI/CD:
-- Al hacer push a la rama `main` en la carpeta `frontend`, se despliega automáticamente a Cloudflare Pages
-- Al hacer push a la rama `main` en la carpeta `backend`, se despliega automáticamente a Cloudflare Workers
+
+- **Infraestructura**: 
+  - Al hacer push a la rama `main` con cambios en los archivos de infraestructura, se despliegan automáticamente los recursos en Cloudflare y GCP/Firebase.
+  
+- **Aplicación**:
+  - Al hacer push a la rama `main` en la carpeta `frontend`, se despliega automáticamente a Cloudflare Pages
+  - Al hacer push a la rama `main` en la carpeta `backend`, se despliega automáticamente a Cloudflare Workers
+
+## Lista de Tareas Pendientes
+
+Consulta [todo.md](todo.md) para un listado completo de tareas pendientes.

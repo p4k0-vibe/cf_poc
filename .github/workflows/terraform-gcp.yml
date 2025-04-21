@@ -1,0 +1,104 @@
+name: Deploy GCP/Firebase Infrastructure
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "infrastructure/gcp.tf"
+      - "infrastructure/outputs.tf"
+      - "infrastructure/providers.tf"
+      - "infrastructure/variables.tf"
+      - ".github/workflows/terraform-gcp.yml"
+  workflow_dispatch:
+
+jobs:
+  terraform:
+    name: "Terraform Deploy - GCP/Firebase"
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./infrastructure
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.5.7
+
+      - name: Setup Google Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ secrets.GCP_PROJECT_ID }}
+          service_account_key: ${{ secrets.GCP_SA_KEY }}
+          export_default_credentials: true
+
+      - name: Create GCP service account key file
+        run: |
+          echo '${{ secrets.GCP_SA_KEY }}' > gcp-key.json
+          echo "GCP_CREDENTIALS_FILE=gcp-key.json" >> $GITHUB_ENV
+
+      - name: Create tfvars file
+        run: |
+          cat > terraform.tfvars << EOF
+          cloudflare_api_token = "${{ secrets.CLOUDFLARE_API_TOKEN }}"
+          cloudflare_account_id = "${{ secrets.CLOUDFLARE_ACCOUNT_ID }}"
+          cloudflare_zone_id = "${{ secrets.CLOUDFLARE_ZONE_ID }}"
+          custom_domain = "${{ secrets.CUSTOM_DOMAIN }}"
+          firebase_project_id = "${{ secrets.FIREBASE_PROJECT_ID }}"
+          allowed_origins = "${{ secrets.ALLOWED_ORIGINS }}"
+          gcp_project_id = "${{ secrets.GCP_PROJECT_ID }}"
+          gcp_region = "${{ secrets.GCP_REGION }}"
+          gcp_credentials_file = "${{ env.GCP_CREDENTIALS_FILE }}"
+          firestore_location = "${{ secrets.FIRESTORE_LOCATION }}"
+          allowed_origins_list = ["${{ secrets.ALLOWED_ORIGINS_LIST }}"]
+          EOF
+
+      - name: Terraform Format
+        run: terraform fmt -check
+
+      - name: Terraform Init
+        run: terraform init
+        env:
+          TF_CLI_ARGS_init: "-backend-config=bucket=${{ secrets.TERRAFORM_STATE_BUCKET }}"
+
+      - name: Terraform Validate
+        run: terraform validate
+
+      - name: Terraform Plan
+        run: terraform plan -target=google_project_service.firebase -target=google_project_service.firestore -target=google_project_service.storage -target=google_firebase_web_app.gastos_app -target=google_storage_bucket.firebase_hosting -target=google_firestore_database.database -target=google_firestore_document.firestore_rules -target=google_storage_bucket.receipts_bucket -target=google_storage_bucket_iam_binding.public_read -target=google_storage_bucket_iam_binding.authenticated_write
+        env:
+          TF_VAR_gcp_project_id: ${{ secrets.GCP_PROJECT_ID }}
+          TF_VAR_gcp_region: ${{ secrets.GCP_REGION }}
+          TF_VAR_gcp_credentials_file: ${{ env.GCP_CREDENTIALS_FILE }}
+          TF_VAR_firestore_location: ${{ secrets.FIRESTORE_LOCATION }}
+          TF_VAR_allowed_origins_list: ${{ secrets.ALLOWED_ORIGINS_LIST }}
+          TF_VAR_firebase_project_id: ${{ secrets.FIREBASE_PROJECT_ID }}
+
+      - name: Terraform Apply
+        if: github.ref == 'refs/heads/main'
+        run: terraform apply -auto-approve -target=google_project_service.firebase -target=google_project_service.firestore -target=google_project_service.storage -target=google_firebase_web_app.gastos_app -target=google_storage_bucket.firebase_hosting -target=google_firestore_database.database -target=google_firestore_document.firestore_rules -target=google_storage_bucket.receipts_bucket -target=google_storage_bucket_iam_binding.public_read -target=google_storage_bucket_iam_binding.authenticated_write
+        env:
+          TF_VAR_gcp_project_id: ${{ secrets.GCP_PROJECT_ID }}
+          TF_VAR_gcp_region: ${{ secrets.GCP_REGION }}
+          TF_VAR_gcp_credentials_file: ${{ env.GCP_CREDENTIALS_FILE }}
+          TF_VAR_firestore_location: ${{ secrets.FIRESTORE_LOCATION }}
+          TF_VAR_allowed_origins_list: ${{ secrets.ALLOWED_ORIGINS_LIST }}
+          TF_VAR_firebase_project_id: ${{ secrets.FIREBASE_PROJECT_ID }}
+
+      - name: Capture Terraform Output
+        if: github.ref == 'refs/heads/main'
+        run: terraform output > terraform_gcp_output.txt
+
+      - name: Upload Terraform Output
+        if: github.ref == 'refs/heads/main'
+        uses: actions/upload-artifact@v4
+        with:
+          name: terraform-gcp-output
+          path: infrastructure/terraform_gcp_output.txt
+
+      - name: Cleanup GCP service account key
+        if: always()
+        run: rm -f gcp-key.json

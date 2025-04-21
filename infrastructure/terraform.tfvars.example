@@ -1,6 +1,18 @@
+# Cloudflare variables
 cloudflare_api_token = "your-cloudflare-api-token"
 cloudflare_account_id = "your-cloudflare-account-id"
 cloudflare_zone_id = "your-cloudflare-zone-id"
 custom_domain = "example.com"
 firebase_project_id = "your-firebase-project-id"
-allowed_origins = "http://localhost:5173,https://gastos-familiares.pages.dev,https://example.com" 
+allowed_origins = "http://localhost:5173,https://gastos-familiares.pages.dev,https://example.com"
+
+# GCP/Firebase variables
+gcp_project_id = "your-gcp-project-id"
+gcp_region = "us-central1"
+gcp_credentials_file = "path/to/service-account-key.json"
+firestore_location = "us-central"
+allowed_origins_list = [
+  "http://localhost:5173",
+  "https://gastos-familiares.pages.dev",
+  "https://example.com"
+] 

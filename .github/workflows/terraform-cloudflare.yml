@@ -1,0 +1,86 @@
+name: Deploy Cloudflare Infrastructure
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "infrastructure/main.tf"
+      - "infrastructure/outputs.tf"
+      - "infrastructure/providers.tf"
+      - "infrastructure/variables.tf"
+      - ".github/workflows/terraform-cloudflare.yml"
+  workflow_dispatch:
+
+jobs:
+  terraform:
+    name: "Terraform Deploy - Cloudflare"
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./infrastructure
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.5.7
+
+      - name: Create tfvars file
+        run: |
+          cat > terraform.tfvars << EOF
+          cloudflare_api_token = "${{ secrets.CLOUDFLARE_API_TOKEN }}"
+          cloudflare_account_id = "${{ secrets.CLOUDFLARE_ACCOUNT_ID }}"
+          cloudflare_zone_id = "${{ secrets.CLOUDFLARE_ZONE_ID }}"
+          custom_domain = "${{ secrets.CUSTOM_DOMAIN }}"
+          firebase_project_id = "${{ secrets.FIREBASE_PROJECT_ID }}"
+          allowed_origins = "${{ secrets.ALLOWED_ORIGINS }}"
+          # GCP vars are not needed for Cloudflare resources
+          gcp_project_id = ""
+          gcp_credentials_file = ""
+          EOF
+
+      - name: Terraform Format
+        run: terraform fmt -check
+
+      - name: Terraform Init
+        run: terraform init
+        env:
+          TF_CLI_ARGS_init: "-backend-config=bucket=${{ secrets.TERRAFORM_STATE_BUCKET }}"
+
+      - name: Terraform Validate
+        run: terraform validate
+
+      - name: Terraform Plan
+        run: terraform plan -target=cloudflare_d1_database.expenses_db -target=cloudflare_r2_bucket.receipts_bucket -target=cloudflare_workers_kv_namespace.session_kv -target=cloudflare_worker_script.api_worker -target=cloudflare_pages_project.frontend -target=cloudflare_record.api -target=cloudflare_worker_route.api_route
+        env:
+          TF_VAR_cloudflare_api_token: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          TF_VAR_cloudflare_account_id: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          TF_VAR_cloudflare_zone_id: ${{ secrets.CLOUDFLARE_ZONE_ID }}
+          TF_VAR_custom_domain: ${{ secrets.CUSTOM_DOMAIN }}
+          TF_VAR_firebase_project_id: ${{ secrets.FIREBASE_PROJECT_ID }}
+          TF_VAR_allowed_origins: ${{ secrets.ALLOWED_ORIGINS }}
+
+      - name: Terraform Apply
+        if: github.ref == 'refs/heads/main'
+        run: terraform apply -auto-approve -target=cloudflare_d1_database.expenses_db -target=cloudflare_r2_bucket.receipts_bucket -target=cloudflare_workers_kv_namespace.session_kv -target=cloudflare_worker_script.api_worker -target=cloudflare_pages_project.frontend -target=cloudflare_record.api -target=cloudflare_worker_route.api_route
+        env:
+          TF_VAR_cloudflare_api_token: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          TF_VAR_cloudflare_account_id: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          TF_VAR_cloudflare_zone_id: ${{ secrets.CLOUDFLARE_ZONE_ID }}
+          TF_VAR_custom_domain: ${{ secrets.CUSTOM_DOMAIN }}
+          TF_VAR_firebase_project_id: ${{ secrets.FIREBASE_PROJECT_ID }}
+          TF_VAR_allowed_origins: ${{ secrets.ALLOWED_ORIGINS }}
+
+      - name: Capture Terraform Output
+        if: github.ref == 'refs/heads/main'
+        run: terraform output > terraform_cloudflare_output.txt
+
+      - name: Upload Terraform Output
+        if: github.ref == 'refs/heads/main'
+        uses: actions/upload-artifact@v4
+        with:
+          name: terraform-cloudflare-output
+          path: infrastructure/terraform_cloudflare_output.txt
